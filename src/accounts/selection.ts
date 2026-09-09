@@ -1,4 +1,5 @@
 import * as selectors from './selectors.js';
+import * as preferences from './preferences.js';
 import type { Account, Store } from './types.js';
 
 let selectedID: string | undefined;
@@ -16,7 +17,7 @@ export function id(): string | undefined {
   return selectedID;
 }
 
-export function select(accountID: string): void {
+export function select(accountID: string | undefined): void {
   if (selectedID === accountID) return;
   selectedID = accountID;
   notify();
@@ -26,7 +27,6 @@ export function active(store: Store): Account | undefined {
   if (selectedID) {
     const found = selectors.find(store, selectedID);
     if (found) return found;
-    selectedID = undefined;
   }
   return selectors.active(store);
 }
@@ -40,12 +40,16 @@ export function pick(
   const isEligible = (account: Account) =>
     (!exclude?.has(account.id) &&
       (!account.rateLimitUntilMs || account.rateLimitUntilMs <= now));
-  const head = active(store);
-  if (head && isEligible(head)) return head;
-  const fallback = store.accounts.find(isEligible);
+  const manual = selectedID ? selectors.find(store, selectedID) : undefined;
+  if (manual && isEligible(manual)) return manual;
+  const ordered = preferences
+    .snapshot()
+    .map((id) => selectors.find(store, id))
+    .filter((account): account is Account => !!account);
+  const fallback = ordered.find(isEligible);
   if (fallback) return fallback;
-  if (head && !exclude?.has(head.id)) return head;
-  return store.accounts.find((account) => !exclude?.has(account.id)) ?? head;
+  if (manual && !exclude?.has(manual.id)) return manual;
+  return ordered.find((account) => !exclude?.has(account.id));
 }
 
 export function subscribe(listener: () => void): () => void {

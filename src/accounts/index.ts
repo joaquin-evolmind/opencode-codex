@@ -1,6 +1,8 @@
 import * as selectors from './selectors.js';
 import * as state from './state.js';
 import * as storage from './storage.js';
+import * as preferences from './preferences.js';
+import * as selection from './selection.js';
 import type { Account, Store, Usage } from './types.js';
 
 export async function load(): Promise<Store> {
@@ -43,7 +45,20 @@ export function displayName(account: Account): string {
 export function pick(
   options: selectors.PickOptions | number = Date.now(),
 ): Account | undefined {
-  return selectors.pick(snapshot(), options);
+  const normalized = typeof options === 'number' ? { now: options } : options;
+  return selection.pick(snapshot(), normalized);
+}
+
+export function order(): string[] {
+  return preferences.snapshot();
+}
+
+export function reorder(ids: readonly string[]): Promise<string[]> {
+  return preferences.replacePrepared(ids, state.prepareForPreferenceTransaction);
+}
+
+export function preferencesFile(): string {
+  return preferences.file();
 }
 
 export async function save(
