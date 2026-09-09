@@ -6,6 +6,8 @@ export interface OauthEntry {
   localId?: string;
   accountId?: string;
   subject?: string;
+  email?: string;
+  label?: string;
   enterpriseUrl?: string;
 }
 

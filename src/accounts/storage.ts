@@ -36,7 +36,7 @@ function identityFor(entry: OauthEntry): {
         `imported-${entry.access.slice(-12).replace(/[^a-zA-Z0-9]/g, '')}`,
     subject,
     accountId,
-    email: claims.email,
+    email: claims.email ?? entry.email,
   };
 }
 
@@ -52,7 +52,7 @@ function accountFromEntry(key: string, entry: OauthEntry): Account {
     subject: identity.subject,
     accountId: identity.accountId,
     email: identity.email ?? (label?.includes('@') ? label : undefined),
-    label: label && !label.includes('@') ? label : undefined,
+    label: entry.label,
     refresh: entry.refresh,
     access: entry.access,
     expires: entry.expires,
@@ -70,6 +70,8 @@ function toEntry(account: Account): OauthEntry {
     localId: account.id,
     accountId: account.accountId,
     subject: account.subject,
+    email: account.email,
+    label: account.label,
     enterpriseUrl: account.enterpriseUrl,
   };
 }

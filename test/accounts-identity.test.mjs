@@ -100,6 +100,31 @@ test('resolves canonical active to the matching opaque legacy credential', async
     ).length,
     2,
   );
+  assert.equal(
+    store.accounts.find((account) => account.id === 'plus-account')?.email,
+    'plus@example.com',
+  );
+});
+
+test('uses persisted OAuth metadata for display without exposing local IDs', async () => {
+  const oauthAccount = accountFromTokens({
+    id_token: jwt({
+      sub: 'display-user',
+      chatgpt_account_id: 'display-workspace',
+      email: 'display@example.com',
+    }),
+    access_token: 'opaque-display-token',
+    refresh_token: 'refresh-display',
+  });
+  assert.equal(accounts.displayName(oauthAccount), 'display@example.com');
+  assert.equal(
+    accounts.displayName({ ...oauthAccount, email: undefined }),
+    'Codex account …orkspace',
+  );
+  assert.equal(
+    accounts.displayName({ ...oauthAccount, email: undefined, accountId: undefined }),
+    'Codex account',
+  );
 });
 
 test('keeps two Team subjects and a legacy Plus account through reload and selection', async () => {
@@ -131,6 +156,13 @@ test('keeps two Team subjects and a legacy Plus account through reload and selec
   store = await accounts.reload();
   assert.equal(store.active, 'oauth-v2:user-b:team-workspace');
   assert.equal(accounts.active(store)?.subject, 'user-b');
+  assert.deepEqual(
+    store.accounts
+      .filter((account) => account.accountId === 'team-workspace')
+      .map(accounts.displayName)
+      .sort(),
+    ['user-a@example.com', 'user-b@example.com'],
+  );
   assert.equal(
     store.accounts.filter(
       (account) => account.accountId === 'legacy-team-workspace',
@@ -182,6 +214,14 @@ test('same-subject login updates without merging a different Team user', async (
   assert.equal(
     accounts.find('oauth-v2:user-b:team-workspace')?.access,
     'access-user-b-team-workspace',
+  );
+  assert.equal(
+    accounts.find('oauth-v2:user-a:team-workspace')?.email,
+    'renamed@example.com',
+  );
+  assert.equal(
+    accounts.find('oauth-v2:user-b:team-workspace')?.email,
+    'user-b@example.com',
   );
   assert.ok(accounts.find('plus-account'));
 });
@@ -299,6 +339,34 @@ test('accepts parseable tokens with absent identity claims', async () => {
     assert.equal(refreshed.id, account.id);
     assert.equal(refreshed.subject, account.subject);
     assert.equal(refreshed.accountId, account.accountId);
+    assert.equal(refreshed.email, 'user-a@example.com');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('refreshes email metadata only for the matching membership', async () => {
+  const account = accounts.find('oauth-v2:user-a:team-workspace');
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    Response.json({
+      id_token: jwt({
+        sub: account.subject,
+        chatgpt_account_id: account.accountId,
+        email: 'refreshed-user-a@example.com',
+      }),
+      access_token: 'opaque-email-refresh',
+    });
+  try {
+    const refreshed = await token.ensure({ ...account, expires: 0 });
+    assert.equal(refreshed.id, 'oauth-v2:user-a:team-workspace');
+    assert.equal(refreshed.email, 'refreshed-user-a@example.com');
+    const reloaded = await accounts.reload();
+    assert.equal(accounts.find(account.id, reloaded)?.email, refreshed.email);
+    assert.equal(
+      accounts.find('oauth-v2:user-b:team-workspace', reloaded)?.email,
+      'user-b@example.com',
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -519,6 +587,10 @@ test('keeps migrated legacy IDs and canonical credential selection stable', asyn
       .map((account) => ({ id: account.id, access: account.access }))
       .sort((a, b) => a.id.localeCompare(b.id)),
     legacy,
+  );
+  assert.equal(
+    second.accounts.find((account) => account.id === 'plus-account')?.email,
+    'plus@example.com',
   );
 });
 

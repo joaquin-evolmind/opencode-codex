@@ -3,6 +3,7 @@ import type { TuiPluginApi } from '@opencode-ai/plugin/tui';
 import { StyledText, fg, type TextRenderable } from '@opentui/core';
 import * as selection from '../accounts/selection.js';
 import type { Store } from '../accounts/types.js';
+import { displayName } from '../accounts/index.js';
 import * as quota from '../quota/index.js';
 import { bindAccountsText } from './live-text.js';
 
@@ -20,7 +21,7 @@ export function PromptStatus(props: { api: TuiPluginApi }) {
         fg(props.api.theme.current.textMuted)('no Codex account'),
       ]);
     }
-    const name = a.label || a.email || a.id;
+    const name = displayName(a);
     const plan = quota.plan(a);
     return new StyledText([
       fg(props.api.theme.current.accent)(trim(name)),

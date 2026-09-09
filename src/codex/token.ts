@@ -94,18 +94,21 @@ export async function ensure(
     validateTokenAgreement(idIdentity, accessIdentity);
     validateIdentity(account, idIdentity);
     validateIdentity(account, accessIdentity);
+    const email = idIdentity.email ?? accessIdentity.email ?? account.email;
     const expires = now + (tokens.expires_in ?? 3600) * 1000;
     const refreshToken = tokens.refresh_token ?? account.refresh;
     await accounts.updateTokens(account.id, {
       access: tokens.access_token,
       refresh: refreshToken,
       expires,
+      email,
     });
     return {
       ...account,
       access: tokens.access_token,
       refresh: refreshToken,
       expires,
+      email,
     };
   })().finally(() => inflight.delete(account.id));
 

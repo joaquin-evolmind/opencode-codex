@@ -35,7 +35,7 @@ export function showAccounts(api: TuiPluginApi): void {
             if (left != null) status.push(`5h ${Math.round(left)}%`);
           }
           return {
-            title: account.label || account.email || account.id,
+            title: accounts.displayName(account),
             value: account.id,
             description: status.join(' · ') || undefined,
           };

@@ -27,6 +27,13 @@ export function active(store?: Store): Account | undefined {
   return selectors.active(store ?? snapshot());
 }
 
+export function displayName(account: Account): string {
+  if (account.label) return account.label;
+  if (account.email) return account.email;
+  if (account.accountId) return `Codex account …${account.accountId.slice(-8)}`;
+  return 'Codex account';
+}
+
 /**
  * Pick the account to send the next request through. Active-first with
  * rate-limit fallback. Returns the active even if it's rate-limited when no
@@ -98,7 +105,7 @@ export async function touch(id: string): Promise<void> {
 
 export async function updateTokens(
   id: string,
-  tokens: { access: string; refresh: string; expires: number },
+  tokens: { access: string; refresh: string; expires: number; email?: string },
 ): Promise<Store> {
   return state.mutate((s) => {
     const account = s.accounts.find((a) => a.id === id);
@@ -106,6 +113,7 @@ export async function updateTokens(
       account.access = tokens.access;
       account.refresh = tokens.refresh;
       account.expires = tokens.expires;
+      account.email = tokens.email ?? account.email;
     }
   });
 }

@@ -14,6 +14,8 @@ function toEntry(account: Account): OauthEntry {
     localId: account.id,
     accountId: account.accountId,
     subject: account.subject,
+    email: account.email,
+    label: account.label,
     enterpriseUrl: account.enterpriseUrl,
   };
 }
