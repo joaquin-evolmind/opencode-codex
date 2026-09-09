@@ -11,7 +11,9 @@ function toEntry(account: Account): OauthEntry {
     refresh: account.refresh,
     access: account.access,
     expires: account.expires,
-    accountId: account.id,
+    localId: account.id,
+    accountId: account.accountId,
+    subject: account.subject,
     enterpriseUrl: account.enterpriseUrl,
   };
 }
@@ -21,6 +23,8 @@ export function fingerprint(store: Store): string {
     active: store.active,
     accounts: store.accounts.map((account) => ({
       id: account.id,
+      subject: account.subject,
+      accountId: account.accountId,
       email: account.email,
       access: account.access,
       refresh: account.refresh,

@@ -1,6 +1,7 @@
-import type { TokenResponse } from './types.js';
+import type { RefreshTokenResponse } from './types.js';
 
 interface Claims {
+  sub?: string;
   email?: string;
   chatgpt_account_id?: string;
   organizations?: Array<{ id: string }>;
@@ -24,9 +25,13 @@ function parse(token: string | undefined): Claims | undefined {
   }
 }
 
-function fromClaims(c: Claims | undefined): { id?: string; email?: string } {
+function fromClaims(c: Claims | undefined): {
+  subject?: string;
+  accountId?: string;
+  email?: string;
+} {
   if (!c) return {};
-  const id =
+  const accountId =
     c.chatgpt_account_id ||
     c['https://api.openai.com/auth']?.chatgpt_account_id ||
     c.organizations?.[0]?.id;
@@ -34,17 +39,26 @@ function fromClaims(c: Claims | undefined): { id?: string; email?: string } {
     c.email ||
     c['https://api.openai.com/profile']?.email ||
     c['https://api.openai.com/auth']?.user_email;
-  return { id, email };
+  return { subject: c.sub, accountId, email };
 }
 
-export function identify(tokens: TokenResponse): {
-  id?: string;
+export function identify(tokens: RefreshTokenResponse): {
+  subject?: string;
+  accountId?: string;
   email?: string;
 } {
   const fromId = fromClaims(parse(tokens.id_token));
   const fromAccess = fromClaims(parse(tokens.access_token));
   return {
-    id: fromId.id ?? fromAccess.id,
+    subject: fromId.subject ?? fromAccess.subject,
+    accountId: fromId.accountId ?? fromAccess.accountId,
     email: fromId.email ?? fromAccess.email,
   };
+}
+
+export function localId(subject: string, accountId?: string): string {
+  const encodedSubject = encodeURIComponent(subject);
+  return accountId
+    ? `oauth-v2:${encodedSubject}:${encodeURIComponent(accountId)}`
+    : `oauth-sub-v1:${encodedSubject}`;
 }

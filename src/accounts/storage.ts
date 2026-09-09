@@ -4,6 +4,7 @@ import * as authFile from '../auth/file.js';
 import { isPerAccountKey, keyFor, labelFromKey } from '../auth/keys.js';
 import type { Entry, OauthEntry } from '../auth/types.js';
 import type { Account, Store } from './types.js';
+import { identify, localId } from '../oauth/jwt.js';
 
 const EMPTY: Store = { version: 1, accounts: [] };
 
@@ -15,18 +16,42 @@ export function file(): string {
   return authFile.authJsonPath();
 }
 
-function idFor(entry: OauthEntry): string {
-  return (
-    entry.accountId ??
-    `imported-${entry.access.slice(-12).replace(/[^a-zA-Z0-9]/g, '')}`
-  );
+function identityFor(entry: OauthEntry): {
+  id: string;
+  subject?: string;
+  accountId?: string;
+  email?: string;
+} {
+  const claims = identify({
+    access_token: entry.access,
+    refresh_token: entry.refresh,
+  });
+  const subject = entry.subject ?? claims.subject;
+  const accountId = claims.accountId ?? entry.accountId;
+  return {
+    id: subject
+      ? localId(subject, accountId)
+      : entry.localId ??
+        entry.accountId ??
+        `imported-${entry.access.slice(-12).replace(/[^a-zA-Z0-9]/g, '')}`,
+    subject,
+    accountId,
+    email: claims.email,
+  };
+}
+
+function sameCredentials(account: Account, entry: OauthEntry): boolean {
+  return account.access === entry.access && account.refresh === entry.refresh;
 }
 
 function accountFromEntry(key: string, entry: OauthEntry): Account {
   const label = labelFromKey(key);
+  const identity = identityFor(entry);
   return {
-    id: idFor(entry),
-    email: label?.includes('@') ? label : undefined,
+    id: identity.id,
+    subject: identity.subject,
+    accountId: identity.accountId,
+    email: identity.email ?? (label?.includes('@') ? label : undefined),
     label: label && !label.includes('@') ? label : undefined,
     refresh: entry.refresh,
     access: entry.access,
@@ -42,7 +67,9 @@ function toEntry(account: Account): OauthEntry {
     refresh: account.refresh,
     access: account.access,
     expires: account.expires,
-    accountId: account.id,
+    localId: account.id,
+    accountId: account.accountId,
+    subject: account.subject,
     enterpriseUrl: account.enterpriseUrl,
   };
 }
@@ -58,11 +85,23 @@ export async function read(): Promise<Store> {
     const e = oauth(entry);
     if (!e || !isPerAccountKey(key)) continue;
     const account = accountFromEntry(key, e);
+    const existing = byID.get(account.id);
+    if (
+      existing &&
+      !account.subject &&
+      (existing.access !== account.access || existing.refresh !== account.refresh)
+    ) {
+      account.id = `legacy-v1:${Buffer.from(key).toString('base64url')}`;
+    }
     byID.set(account.id, { ...byID.get(account.id), ...account });
   }
 
   const canonical = oauth(all[PROVIDER_ID]);
-  let active = canonical ? idFor(canonical) : undefined;
+  let active = canonical
+    ? Array.from(byID.values()).find((account) =>
+        sameCredentials(account, canonical),
+      )?.id ?? identityFor(canonical).id
+    : undefined;
   if (canonical && byID.size === 0) {
     const account = accountFromEntry(PROVIDER_ID, canonical);
     byID.set(account.id, account);

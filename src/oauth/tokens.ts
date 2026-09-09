@@ -1,6 +1,6 @@
 import { OAUTH_CLIENT_ID, OAUTH_ISSUER, OAUTH_SCOPE } from '../config.js';
 import type { PkceCodes } from './pkce.js';
-import type { TokenResponse } from './types.js';
+import type { RefreshTokenResponse, TokenResponse } from './types.js';
 
 export function authorizeUrl(
   redirectUri: string,
@@ -46,7 +46,7 @@ export async function exchange(
 export async function refresh(
   refreshToken: string,
   signal?: AbortSignal,
-): Promise<TokenResponse> {
+): Promise<RefreshTokenResponse> {
   const response = await fetch(`${OAUTH_ISSUER}/oauth/token`, {
     method: 'POST',
     signal,
@@ -58,5 +58,5 @@ export async function refresh(
     }).toString(),
   });
   if (!response.ok) throw new Error(`Token refresh failed: ${response.status}`);
-  return response.json() as Promise<TokenResponse>;
+  return response.json() as Promise<RefreshTokenResponse>;
 }

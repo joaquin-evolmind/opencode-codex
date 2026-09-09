@@ -2,7 +2,7 @@ import * as accounts from '../accounts/index.js';
 import type { Account } from '../accounts/types.js';
 import * as callback from './callback.js';
 import * as device from './device.js';
-import { identify } from './jwt.js';
+import { identify, localId } from './jwt.js';
 import * as paste from './paste.js';
 import { pkce, state } from './pkce.js';
 import { authorizeUrl, refresh as refreshTokens } from './tokens.js';
@@ -44,12 +44,17 @@ interface FailedResult {
 
 const SAFE_FAIL: FailedResult = { type: 'failed' };
 
-function tokensToAccount(tokens: TokenResponse, now = Date.now()): Account {
-  const { id, email } = identify(tokens);
+export function accountFromTokens(
+  tokens: TokenResponse,
+  now = Date.now(),
+): Account {
+  const { subject, accountId, email } = identify(tokens);
   return {
     id:
-      id ??
+      (subject ? localId(subject, accountId) : accountId) ??
       `unknown-${tokens.access_token.slice(-12).replace(/[^a-zA-Z0-9]/g, '')}`,
+    subject,
+    accountId,
     email,
     refresh: tokens.refresh_token,
     access: tokens.access_token,
@@ -59,14 +64,14 @@ function tokensToAccount(tokens: TokenResponse, now = Date.now()): Account {
 }
 
 async function persist(tokens: TokenResponse): Promise<SuccessResult> {
-  const account = tokensToAccount(tokens);
+  const account = accountFromTokens(tokens);
   await accounts.save(account, { activate: true });
   return {
     type: 'success',
     refresh: tokens.refresh_token,
     access: tokens.access_token,
     expires: account.expires,
-    accountId: account.id,
+    accountId: account.accountId,
   };
 }
 

@@ -11,7 +11,12 @@ export interface Usage {
 }
 
 export interface Account {
+  /** Stable local identity. This is not the upstream ChatGPT account header. */
   id: string;
+  /** Stable OAuth user subject, when supplied by OpenAI. */
+  subject?: string;
+  /** Workspace/account value sent as ChatGPT-Account-Id. */
+  accountId?: string;
   email?: string;
   label?: string;
   refresh: string;

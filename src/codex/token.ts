@@ -1,6 +1,7 @@
 import * as accounts from '../accounts/index.js';
 import type { Account } from '../accounts/types.js';
 import { refresh as refreshTokens } from '../oauth/index.js';
+import { identify } from '../oauth/jwt.js';
 
 const REFRESH_SKEW_MS = 60_000;
 
@@ -33,6 +34,46 @@ export function isFresh(account: Account, now = Date.now()): boolean {
   return !!account.access && account.expires - REFRESH_SKEW_MS > now;
 }
 
+function validateIdentity(
+  account: Account,
+  identity: ReturnType<typeof identify>,
+): void {
+  if (
+    account.subject &&
+    identity.subject &&
+    identity.subject !== account.subject
+  ) {
+    throw new Error('Refreshed token OAuth subject does not match the account');
+  }
+  if (
+    account.accountId &&
+    identity.accountId &&
+    identity.accountId !== account.accountId
+  ) {
+    throw new Error('Refreshed token workspace does not match the account');
+  }
+}
+
+function validateTokenAgreement(
+  idIdentity: ReturnType<typeof identify>,
+  accessIdentity: ReturnType<typeof identify>,
+): void {
+  if (
+    idIdentity.subject &&
+    accessIdentity.subject &&
+    idIdentity.subject !== accessIdentity.subject
+  ) {
+    throw new Error('Refreshed token OAuth subjects contradict each other');
+  }
+  if (
+    idIdentity.accountId &&
+    accessIdentity.accountId &&
+    idIdentity.accountId !== accessIdentity.accountId
+  ) {
+    throw new Error('Refreshed token workspace claims contradict each other');
+  }
+}
+
 export async function ensure(
   account: Account,
   signal?: AbortSignal,
@@ -45,18 +86,25 @@ export async function ensure(
   const refresh = (async () => {
     throwIfAborted(signal);
     const tokens = await refreshTokens(account.refresh, signal);
+    const idIdentity = identify({
+      id_token: tokens.id_token,
+      access_token: '',
+    });
+    const accessIdentity = identify({ access_token: tokens.access_token });
+    validateTokenAgreement(idIdentity, accessIdentity);
+    validateIdentity(account, idIdentity);
+    validateIdentity(account, accessIdentity);
     const expires = now + (tokens.expires_in ?? 3600) * 1000;
-    void accounts
-      .updateTokens(account.id, {
-        access: tokens.access_token,
-        refresh: tokens.refresh_token,
-        expires,
-      })
-      .catch(() => undefined);
+    const refreshToken = tokens.refresh_token ?? account.refresh;
+    await accounts.updateTokens(account.id, {
+      access: tokens.access_token,
+      refresh: refreshToken,
+      expires,
+    });
     return {
       ...account,
       access: tokens.access_token,
-      refresh: tokens.refresh_token,
+      refresh: refreshToken,
       expires,
     };
   })().finally(() => inflight.delete(account.id));

@@ -3,7 +3,9 @@ export interface OauthEntry {
   refresh: string;
   access: string;
   expires: number;
+  localId?: string;
   accountId?: string;
+  subject?: string;
   enterpriseUrl?: string;
 }
 
