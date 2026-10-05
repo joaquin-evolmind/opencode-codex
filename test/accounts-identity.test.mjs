@@ -228,7 +228,7 @@ test('same-subject login updates without merging a different Team user', async (
 
 test('request, usage, refresh, and rate-limit state stay isolated by local identity', async () => {
   await accounts.activate('oauth-v2:user-a:team-workspace');
-  selection.select('oauth-v2:user-a:team-workspace');
+  await selection.select('oauth-v2:user-a:team-workspace');
   const originalFetch = globalThis.fetch;
   const calls = [];
   globalThis.fetch = async (input, init = {}) => {
@@ -557,7 +557,7 @@ test('keeps subject-only identity stable without synthesizing an account header'
   assert.equal(auth.openai.localId, subjectOnly.id);
   assert.equal('accountId' in auth.openai, false);
 
-  selection.select(subjectOnly.id);
+  await selection.select(subjectOnly.id);
   const originalFetch = globalThis.fetch;
   let upstreamHeaders;
   globalThis.fetch = async (_input, init = {}) => {

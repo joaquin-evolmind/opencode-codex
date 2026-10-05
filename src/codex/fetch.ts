@@ -313,6 +313,10 @@ export function create(): typeof fetch {
     let fresh: Account | undefined;
     let lastError: unknown;
 
+    // /accounts may run in the TUI process; observe its persisted selection.
+    await accounts.refresh().catch((err) => {
+      trace.log(context, 'accounts.refresh.error', { error: trace.error(err) });
+    });
     for (let attempt = 1; attempt <= attempts; attempt++) {
       const excluded = timeoutExcluded(Date.now(), requestTimedOutAccounts);
       const account = selection.pick(accounts.snapshot(), { exclude: excluded });

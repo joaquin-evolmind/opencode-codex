@@ -1,8 +1,8 @@
 import * as selectors from './selectors.js';
 import * as preferences from './preferences.js';
+import * as state from './state.js';
 import type { Account, Store } from './types.js';
 
-let selectedID: string | undefined;
 const listeners = new Set<() => void>();
 
 function notify(): void {
@@ -13,17 +13,25 @@ function notify(): void {
   }
 }
 
+/**
+ * The explicit /accounts selection. It is persisted in preferences.json because
+ * the TUI and the Codex request hook can run in separate processes.
+ */
 export function id(): string | undefined {
-  return selectedID;
+  return preferences.selected();
 }
 
-export function select(accountID: string | undefined): void {
-  if (selectedID === accountID) return;
-  selectedID = accountID;
-  notify();
+export async function select(accountID: string | undefined): Promise<void> {
+  const before = id();
+  await preferences.selectPrepared(
+    accountID,
+    state.prepareForPreferenceTransaction,
+  );
+  if (before !== accountID) notify();
 }
 
 export function active(store: Store): Account | undefined {
+  const selectedID = id();
   if (selectedID) {
     const found = selectors.find(store, selectedID);
     if (found) return found;
@@ -40,6 +48,7 @@ export function pick(
   const isEligible = (account: Account) =>
     (!exclude?.has(account.id) &&
       (!account.rateLimitUntilMs || account.rateLimitUntilMs <= now));
+  const selectedID = id();
   const manual = selectedID ? selectors.find(store, selectedID) : undefined;
   if (manual && isEligible(manual)) return manual;
   const ordered = preferences

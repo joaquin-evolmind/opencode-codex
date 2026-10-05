@@ -66,7 +66,7 @@ test('manual selection wins, falls back without mutation, and recovers', async (
   const now = 20_000;
   await accounts.clearRateLimit('A');
   await accounts.clearRateLimit('B');
-  selection.select('B');
+  await selection.select('B');
   const beforeOrder = accounts.order();
   const beforeActive = accounts.snapshot().active;
   assert.equal(selection.pick(accounts.snapshot(), { now }).id, 'B');
@@ -115,7 +115,7 @@ test('reconciles duplicate and missing IDs deterministically', async () => {
 });
 
 test('reorder changes only opaque priority IDs, not identity, metadata, or credentials', async () => {
-  selection.select(undefined);
+  await selection.select(undefined);
   const before = structuredClone(accounts.snapshot().accounts);
   const canonicalBefore = JSON.parse(await fs.readFile(authPath, 'utf8')).openai;
   await accounts.reorder(['D', 'A', 'unknown', 'D']);
@@ -128,14 +128,14 @@ test('reorder changes only opaque priority IDs, not identity, metadata, or crede
 });
 
 test('manual selection and persisted priority remain independent', async () => {
-  selection.select('A');
+  await selection.select('A');
   await accounts.reorder(['D', 'A', 'C', 'E']);
   assert.equal(selection.id(), 'A');
 
   const beforeOrder = accounts.order();
-  selection.select('C');
+  await selection.select('C');
   assert.deepEqual(accounts.order(), beforeOrder);
-  selection.select(undefined);
+  await selection.select(undefined);
 });
 
 test('plan and quota metadata never affect eligibility or order', async () => {
@@ -147,8 +147,8 @@ test('plan and quota metadata never affect eligibility or order', async () => {
   assert.deepEqual(accounts.order(), ['D', 'A', 'C', 'E']);
 });
 
-test('all request exclusions return undefined without changing selection state', () => {
-  selection.select('A');
+test('all request exclusions return undefined without changing selection state', async () => {
+  await selection.select('A');
   const beforeOrder = accounts.order();
   const beforeActive = accounts.snapshot().active;
   assert.equal(
@@ -160,7 +160,7 @@ test('all request exclusions return undefined without changing selection state',
   assert.equal(selection.id(), 'A');
   assert.equal(accounts.snapshot().active, beforeActive);
   assert.deepEqual(accounts.order(), beforeOrder);
-  selection.select(undefined);
+  await selection.select(undefined);
 });
 
 test('migrates malformed and unsupported preferences without partial data', async () => {
@@ -486,7 +486,7 @@ function assertEqualIDs(ids) {
 
 test('timeout retries follow priority order with request exclusions', async () => {
   await accounts.reorder(['D', 'A', 'C', 'E']);
-  selection.select(undefined);
+  await selection.select(undefined);
   const beforeOrder = accounts.order();
   const beforeActive = accounts.snapshot().active;
   const beforeCanonical = JSON.parse(await fs.readFile(authPath, 'utf8')).openai;

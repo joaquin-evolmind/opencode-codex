@@ -67,8 +67,9 @@ account. Repeat for additional accounts.
 Under the hood the plugin keeps a `openai/<email>` entry in `auth.json` per
 connected account and keeps the canonical `openai` key as a compatibility
 mirror — so OpenCode's provider system sees a normal OAuth credential while the
-plugin reads the account pool from OpenCode's standard auth store. Account
-switching inside an open TUI process is kept in memory and is not persisted.
+plugin reads the account pool from OpenCode's standard auth store. Selecting an
+account in `/accounts` is persisted, so the request process uses it even when it
+runs separately from the TUI. Fallback priority is stored independently.
 
 ## Quota display
 
@@ -92,9 +93,11 @@ Usage data is fetched in memory from `chatgpt.com/backend-api/wham/usage`:
 | Path                                          | Purpose                                                                                                                                                                 |
 |-----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `$XDG_DATA_HOME/opencode/auth.json`           | OpenCode's credential file and the source of truth for Codex OAuth tokens. One entry per account at `openai/<email>` plus the compatibility mirror at `openai`.         |
+| `$XDG_DATA_HOME/opencode/codex/preferences.json` | Fallback priority (`accountOrder`) and the explicit `/accounts` choice (`selectedAccount`). Changing one never changes the other. |
 
-Quota, temporary rate-limit state, and the TUI account selection are process
-memory only. They are refreshed again after restarting OpenCode.
+Quota and temporary rate-limit state are process memory only. They are refreshed
+again after restarting OpenCode. Before each request the plugin checks whether
+`auth.json` or `preferences.json` changed and reloads them only when they did.
 
 ## Troubleshooting
 

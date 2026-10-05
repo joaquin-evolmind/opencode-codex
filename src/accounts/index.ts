@@ -13,6 +13,11 @@ export async function reload(): Promise<Store> {
   return state.reload();
 }
 
+/** Pick up changes another process persisted since this process last read. */
+export async function refresh(): Promise<Store> {
+  return state.refresh();
+}
+
 export function snapshot(): Store {
   return state.snapshot();
 }

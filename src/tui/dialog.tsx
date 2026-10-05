@@ -7,6 +7,7 @@ import * as selection from '../accounts/selection.js';
 import type { Store } from '../accounts/types.js';
 import {
   accountRows,
+  chooseAccount,
   persistMove,
   type MoveDirection,
 } from './account-priority.js';
@@ -70,6 +71,31 @@ export function AccountsDialog(props: {
     }
   };
 
+  const choose = async (id: string): Promise<void> => {
+    setBusy(true);
+    try {
+      const { mirrorError } = await chooseAccount(id);
+      if (mirrorError !== undefined) {
+        props.api.ui.toast({
+          variant: 'warning',
+          title: 'Codex account selected',
+          message: `Requests use it, but OpenCode's auth entry was not updated: ${errorMessage(mirrorError)}`,
+        });
+      }
+    } catch (error) {
+      props.api.ui.toast({
+        variant: 'error',
+        title: 'Could not select Codex account',
+        message: errorMessage(error),
+      });
+      return;
+    } finally {
+      setBusy(false);
+    }
+    void activeNow();
+    dialog.clear();
+  };
+
   const onKeyDown = (event: KeyEvent): void => {
     if (!event.ctrl || (event.name !== 'up' && event.name !== 'down')) return;
     event.preventDefault();
@@ -101,9 +127,7 @@ export function AccountsDialog(props: {
           }}
           onSelect={(_, option) => {
             if (typeof option?.value !== 'string' || busy()) return;
-            selection.select(option.value);
-            void activeNow();
-            dialog.clear();
+            void choose(option.value);
           }}
           onKeyDown={onKeyDown}
         />

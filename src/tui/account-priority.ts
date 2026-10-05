@@ -1,3 +1,5 @@
+import * as accounts from '../accounts/index.js';
+import * as selection from '../accounts/selection.js';
 import type { Account, Store } from '../accounts/types.js';
 import * as quota from '../quota/index.js';
 
@@ -63,4 +65,25 @@ export async function persistMove(
   const next = movedOrder(confirmedOrder, id, direction);
   if (!next) return [...confirmedOrder];
   return reorder(next);
+}
+
+export interface ChooseResult {
+  /** Set when routing uses the choice but OpenCode's auth mirror is stale. */
+  mirrorError?: unknown;
+}
+
+/**
+ * Persist an explicit /accounts choice so the request process routes through
+ * it, then mirror it to OpenCode's canonical `openai` auth entry. Neither step
+ * changes the persisted fallback priority. A failed selection rejects; a failed
+ * mirror update is reported because routing already uses the new account.
+ */
+export async function chooseAccount(id: string): Promise<ChooseResult> {
+  await selection.select(id);
+  try {
+    await accounts.activate(id);
+  } catch (mirrorError) {
+    return { mirrorError };
+  }
+  return {};
 }
