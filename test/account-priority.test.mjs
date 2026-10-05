@@ -127,6 +127,17 @@ test('reorder changes only opaque priority IDs, not identity, metadata, or crede
   ]);
 });
 
+test('manual selection and persisted priority remain independent', async () => {
+  selection.select('A');
+  await accounts.reorder(['D', 'A', 'C', 'E']);
+  assert.equal(selection.id(), 'A');
+
+  const beforeOrder = accounts.order();
+  selection.select('C');
+  assert.deepEqual(accounts.order(), beforeOrder);
+  selection.select(undefined);
+});
+
 test('plan and quota metadata never affect eligibility or order', async () => {
   const store = accounts.snapshot();
   store.accounts.find((account) => account.id === 'D').usage = {
