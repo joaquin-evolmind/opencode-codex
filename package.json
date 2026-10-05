@@ -1,43 +1,44 @@
 {
   "name": "@insd47/opencode-codex",
   "version": "0.0.0",
-  "description": "OpenCode plugin for ChatGPT Plus/Pro OAuth with clean multi-account management",
-  "license": "MIT",
   "author": "insd47",
   "repository": {
     "type": "git",
     "url": "https://github.com/insd47/opencode-codex"
   },
-  "type": "module",
   "main": "dist/server.js",
+  "devDependencies": {
+    "@opencode/plugin": "2.0.20",
+    "@opencode/theme": "2.0.20",
+    "@opentui/core": "0.5.14",
+    "@opentui/solid": "0.5.14",
+    "@types/node": "^25.9.1",
+    "solid-js": "1.9.12",
+    "typescript": "^5.4.0"
+  },
+  "exports": {
+    ".": "./dist/server.js",
+    "./server": "./dist/server.js",
+    "./tui": "./dist/tui.js"
+  },
+  "description": "OpenCode 2 plugin: ChatGPT account priority, quota fallback and quota display on top of OpenCode's native credentials",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "exports": {
-    ".": "./dist/server.js",
-    "./tui": "./dist/tui.js"
-  },
-  "files": ["dist", "README.md", "LICENSE"],
   "scripts": {
     "build": "node build.mjs",
     "test": "npm run build && node --test test/*.test.mjs",
     "typecheck": "tsc --noEmit"
   },
-  "engines": {
-    "node": ">=18"
-  },
-  "peerDependencies": {
-    "@opencode-ai/plugin": "*",
-    "@opencode-ai/sdk": "*"
-  },
-  "devDependencies": {
-    "@opencode-ai/plugin": "*",
-    "@opencode-ai/sdk": "*",
-    "@opentui/core": "*",
-    "@opentui/solid": "*",
-    "@types/node": "^25.9.1",
-    "solid-js": "*",
-    "typescript": "^5.4.0"
-  }
+  "type": "module"
 }

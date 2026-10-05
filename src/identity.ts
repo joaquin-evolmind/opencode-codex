@@ -1,7 +1,8 @@
-import type { RefreshTokenResponse } from './types.js';
-
+/**
+ * Read non-secret identity claims (email, ChatGPT account ID) from an OAuth
+ * access token for display and request headers. Tokens are never logged.
+ */
 interface Claims {
-  sub?: string;
   email?: string;
   chatgpt_account_id?: string;
   organizations?: Array<{ id: string }>;
@@ -25,11 +26,11 @@ function parse(token: string | undefined): Claims | undefined {
   }
 }
 
-function fromClaims(c: Claims | undefined): {
-  subject?: string;
+export function identify(accessToken: string | undefined): {
   accountId?: string;
   email?: string;
 } {
+  const c = parse(accessToken);
   if (!c) return {};
   const accountId =
     c.chatgpt_account_id ||
@@ -39,26 +40,5 @@ function fromClaims(c: Claims | undefined): {
     c.email ||
     c['https://api.openai.com/profile']?.email ||
     c['https://api.openai.com/auth']?.user_email;
-  return { subject: c.sub, accountId, email };
-}
-
-export function identify(tokens: RefreshTokenResponse): {
-  subject?: string;
-  accountId?: string;
-  email?: string;
-} {
-  const fromId = fromClaims(parse(tokens.id_token));
-  const fromAccess = fromClaims(parse(tokens.access_token));
-  return {
-    subject: fromId.subject ?? fromAccess.subject,
-    accountId: fromId.accountId ?? fromAccess.accountId,
-    email: fromId.email ?? fromAccess.email,
-  };
-}
-
-export function localId(subject: string, accountId?: string): string {
-  const encodedSubject = encodeURIComponent(subject);
-  return accountId
-    ? `oauth-v2:${encodedSubject}:${encodeURIComponent(accountId)}`
-    : `oauth-sub-v1:${encodedSubject}`;
+  return { accountId, email };
 }

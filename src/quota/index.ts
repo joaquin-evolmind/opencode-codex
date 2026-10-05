@@ -1,4 +1,6 @@
-import type { Account } from '../accounts/index.js';
+import type { Usage } from '../accounts/types.js';
+
+type WithUsage = { usage?: Usage };
 
 /**
  * Build a progress bar split into filled/empty halves. The caller renders
@@ -42,7 +44,7 @@ export function left(usedPercent: number | undefined): number | undefined {
  * window size. Skips accounts that haven't been fetched yet.
  */
 export function aggregate(
-  accounts: Account[],
+  accounts: readonly WithUsage[],
 ): Array<{ windowMinutes: number; remaining: number }> {
   const byMinutes = new Map<number, { totalLeft: number; count: number }>();
   for (const account of accounts) {
@@ -67,7 +69,7 @@ export function aggregate(
 }
 
 /** Friendly plan name. Returns undefined when no usage has been fetched. */
-export function plan(account: Account | undefined): string | undefined {
+export function plan(account: WithUsage | undefined): string | undefined {
   const raw = account?.usage?.planType;
   if (!raw) return undefined;
   const lower = raw.toLowerCase();

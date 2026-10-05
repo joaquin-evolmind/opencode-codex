@@ -1,7 +1,5 @@
-import * as accounts from '../accounts/index.js';
-import type { Account, Usage, UsageWindow } from '../accounts/index.js';
+import type { Usage, UsageWindow } from '../accounts/types.js';
 import { CODEX_USAGE_ENDPOINT } from '../config.js';
-import * as token from './token.js';
 
 interface RawWindow {
   used_percent?: number;
@@ -61,33 +59,22 @@ export function parse(payload: unknown): Usage | undefined {
   return { fetchedAt: now, planType: data.plan_type, windows };
 }
 
-const inflight = new Map<string, Promise<Usage | undefined>>();
-
 /**
- * Fetch the usage payload for a single account and persist it to the store.
- * Concurrent calls for the same account share one in-flight request.
+ * Fetch the ChatGPT usage (quota) for one credential. The token comes from
+ * OpenCode, which owns refreshing it; this module never refreshes tokens.
  */
-export async function fetch(account: Account): Promise<Usage | undefined> {
-  const existing = inflight.get(account.id);
-  if (existing) return existing;
-  const promise = (async () => {
-    if (!token.isFresh(account)) return undefined;
-    const response = await globalThis.fetch(CODEX_USAGE_ENDPOINT, {
-      headers: {
-        authorization: `Bearer ${account.access}`,
-        ...(account.accountId
-          ? { 'ChatGPT-Account-Id': account.accountId }
-          : {}),
-        'User-Agent': 'opencode-codex/0.1',
-        accept: 'application/json',
-      },
-    });
-    if (!response.ok) return undefined;
-    const usage = parse(await response.json());
-    if (!usage) return undefined;
-    await accounts.updateUsage(account.id, usage);
-    return usage;
-  })().finally(() => inflight.delete(account.id));
-  inflight.set(account.id, promise);
-  return promise;
+export async function fetchUsage(
+  credential: { access: string; accountId?: string },
+  fetchImpl: typeof fetch = globalThis.fetch,
+): Promise<Usage | undefined> {
+  const response = await fetchImpl(CODEX_USAGE_ENDPOINT, {
+    headers: {
+      authorization: `Bearer ${credential.access}`,
+      ...(credential.accountId ? { 'ChatGPT-Account-Id': credential.accountId } : {}),
+      'User-Agent': 'opencode-codex/2',
+      accept: 'application/json',
+    },
+  });
+  if (!response.ok) return undefined;
+  return parse(await response.json());
 }
